@@ -18,21 +18,29 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    // 個数の上限はあらかじめ定めておく
-    const int max_items = 100;
-
-    const int n = load_int(argv[1]);
-    assert(n <= max_items);  // assert で止める
-    assert(n > 0);           // 0以下も抑止する
-
     const double W = load_double(argv[2]);
     assert(W >= 0.0);
 
-    printf("max capacity: W = %.f, # of items: %d\n", W, n);
+    Itemset *items;
 
-    // 乱数シードを1にして、初期化 (ここは変更可能)
-    int seed = 1;
-    Itemset *items = init_itemset(n, seed);
+    if (is_number(argv[1])) {
+        // 個数の上限はあらかじめ定めておく
+        const int max_items = 100;
+
+        const int n = load_int(argv[1]);
+        assert(n <= max_items);  // assert で止める
+        assert(n > 0);           // 0以下も抑止する
+
+        printf("max capacity: W = %.f, # of items: %d\n", W, n);
+
+        // 乱数シードを1にして、初期化 (ここは変更可能)
+        int seed = 1;
+        items = init_itemset(n, seed);
+    } else {
+        items = load_items_from_binary(argv[1]);
+        printf("max capacity: W = %.f, # of items: %zu\n", W, items->number);
+    }
+
     print_itemset(items);
 
     // ソルバーで解く

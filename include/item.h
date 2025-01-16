@@ -1,8 +1,15 @@
 #pragma once
 #include <stddef.h> // size_t のため必要
 
-typedef struct item Item;
-typedef struct itemset Itemset;
+typedef struct item {
+    double value;
+    double weight;
+} Item;
+
+typedef struct itemset {
+    size_t number;
+    Item *item;
+} Itemset;
 
 
 // Itemsetを初期化し、そのポインタを返す関数
@@ -33,3 +40,6 @@ Itemset *load_itemset(char *filename);
 //Itemsetのパラメータを記録したバイナリファイルを出力する関数 [未実装, テスト用]
 void save_itemset(char *filename);
 
+Itemset *load_items_from_binary(const char *filename);
+
+int is_number(const char *str);
