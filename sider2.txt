@@ -1,0 +1,133 @@
+valueの最大値とともに最大値を与えるitemの組み合わせを表示するようにプログラムを変えました。
+変更を加えたmain.c とsearch.c を以下に示します。
+main.c 
+#include <assert.h>
+#include <search.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "item.h"
+#include "search.h"
+#include "util.h"
+
+// main関数
+// プログラム使用例: ./knapsack 10 20
+//  10個の品物を設定し、キャパ20 でナップサック問題をとく
+
+int main(int argc, char **argv) {
+    /* 引数処理: ユーザ入力が正しくない場合は使い方を標準エラーに表示して終了 */
+    if (argc != 3) {
+        fprintf(stderr, "usage: %s <the number of items (int)> <max capacity (double)>\n", argv[0]);
+        exit(1);
+    }
+
+    // 個数の上限はあらかじめ定めておく
+    const int max_items = 100;
+
+    const int n = load_int(argv[1]);
+    assert(n <= max_items);  // assert で止める
+    assert(n > 0);           // 0以下も抑止する
+
+    const double W = load_double(argv[2]);
+    assert(W >= 0.0);
+
+    printf("max capacity: W = %.f, # of items: %d\n", W, n);
+
+    // 乱数シードを1にして、初期化 (ここは変更可能)
+    int seed = 1;
+    Itemset *items = init_itemset(n, seed);
+    print_itemset(items);
+
+    // ソルバーで解く
+    Answer ans = solve(items, W);
+
+    // 表示する
+    printf("----\nbest solution:\n");
+    printf("value: %4.1f\n", ans.value);
+    for (int i = 0; i < get_nitem(items); ++i){
+        printf("%d", ans.flags[i]);
+    }
+    printf("\n");
+
+    free_itemset(items);
+    return 0;
+}
+
+search.c 
+#include "search.h"
+
+#include <assert.h>
+#include <search.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
+#include "item.h"
+
+// ソルバーは search を index = 0 で呼び出すだけ
+Answer solve(const Itemset *list, double capacity) {
+    size_t nitem = get_nitem(list);
+
+    // 品物を入れたかどうかを記録するフラグ配列 =>
+    // !!最大の組み合わせが返ってくる訳ではない!!
+    unsigned char flags[nitem];
+    return search(0, list, capacity, flags, 0.0, 0.0);
+}
+
+// 再帰的な探索関数
+Answer search(int index, const Itemset *list, double capacity, unsigned char *flags, double sum_v, double sum_w) {
+    size_t max_index = get_nitem(list);
+    assert(index >= 0 && sum_v >= 0 && sum_w >= 0);
+    const Answer invalid = (Answer){.value = 0, .flags = NULL}; // 解なしを定義
+
+    // 必ず再帰の停止条件を明記する (最初が望ましい)
+    if (index == max_index) {
+        const char *format_ok = ", total_value = %5.1f, total_weight = %5.1f\n";
+        const char *format_ng = ", total_value = %5.1f, total_weight = %5.1f NG\n";
+
+        bool is_not_exceed = (sum_w <= capacity); // 重さ評価のtrue/false
+        const char *format = (is_not_exceed)? format_ok : format_ng;
+        unsigned char *arg = (is_not_exceed)? malloc(sizeof(unsigned char) * max_index) : NULL;
+
+        if (is_not_exceed){
+            for (int i = 0; i < max_index; ++i){
+                arg[i] = flags[i];
+                printf("%d", flags[i]);
+            }
+        }
+        printf(format, sum_v, sum_w);
+
+        return (is_not_exceed)?(Answer){.value = sum_v, .flags = arg} : invalid;
+    }
+
+    // 以下は再帰の更新式: 現在のindex の品物を使う or 使わないで分岐し、index
+    // をインクリメントして再帰的にsearch() を実行する
+
+    // index番目を使わない場合
+    flags[index] = 0;
+    const Answer a0 = search(index + 1, list, capacity, flags, sum_v, sum_w);
+
+    // index番目を使う場合
+    flags[index] = 1;
+    Item *item = get_item(list, index);
+    sum_v += get_itemvalue(item);
+    sum_w += get_itemweight(item);
+    
+    bool is_not_exceed = (sum_w <= capacity);
+    const Answer a1 = (is_not_exceed)?search(index + 1, list, capacity, flags, sum_v, sum_w): invalid;
+    
+    
+
+    // 使った場合の結果と使わなかった場合の結果を比較して返す
+    if (a0.value > a1.value){
+        free(a1.flags);
+        return a0;
+    }
+    else{
+        free(a0.flags);
+        return a1;
+    }
+}
+
+質問は以下の通りです。　
+search.cの中の再帰の停止条件のなかで、flagsをargにコピーしている理由はなんですか。詳しく説明してください。
